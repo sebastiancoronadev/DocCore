@@ -1,0 +1,57 @@
+﻿{
+    "DocCore": {
+        "version": "3.0.0",
+        "codename": "核文",
+        "author": "DocCore Security Team",
+        "modules": {
+            "powershell_orchestrator": {
+                "enabled": true,
+                "min_version": "5.1",
+                "role": "Central orchestrator and CLI interface"
+            },
+            "rust_scanner": {
+                "enabled": true,
+                "binary_path": "src/核心扫描引擎/target/release/binary_scanner.exe",
+                "role": "High-performance parallel binary scanning and hash calculation",
+                "features": ["sha256", "sha512", "md5", "yara_patterns", "entropy_analysis"]
+            },
+            "python_analyzer": {
+                "enabled": true,
+                "script_path": "src/文档分析器/pdf_analyzer.py",
+                "role": "Deep PDF/Office document structure analysis",
+                "features": ["javascript_detection", "stream_analysis", "metadata_extraction", "obfuscation_detection"]
+            },
+            "typescript_analyzer": {
+                "enabled": true,
+                "script_path": "src/脚本分析引擎/dist/script_analyzer.js",
+                "role": "Static script analysis for malicious macros and embedded code",
+                "features": ["obfuscation_detection", "suspicious_api_detection", "entropy_calculation"]
+            },
+            "cpp_memory_handler": {
+                "enabled": true,
+                "binary_path": "src/内存处理核心/build/memory_handler.exe",
+                "role": "Low-level memory buffer operations and payload extraction",
+                "features": ["metadata_stripping", "payload_extraction", "memory_entropy"]
+            }
+        },
+        "security": {
+            "offline_mode": true,
+            "no_database": true,
+            "memory_only_processing": true,
+            "session_isolation": true,
+            "zero_trust_architecture": true
+        },
+        "output": {
+            "default_format": "JSON",
+            "supported_formats": ["JSON", "XML", "Terminal"],
+            "encoding": "UTF-8",
+            "include_chinese_support": true
+        },
+        "performance": {
+            "parallel_processing": true,
+            "max_threads": "auto",
+            "memory_limit_mb": 4096,
+            "scan_timeout_seconds": 300
+        }
+    }
+}
