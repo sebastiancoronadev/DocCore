@@ -1,4 +1,4 @@
-use std::fs::File;
+﻿use std::fs::File;
 use std::io::Read;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -11,7 +11,7 @@ use memmap2::Mmap;
 
 #[derive(Parser)]
 #[command(name = "binary_scanner")]
-#[command(about = "核心二进制扫描引擎 - Parallel Signature Detection & Hash Calculation")]
+#[command(about = "核心二进制扫描引擎 - 并行模式匹配与哈希计算")]
 struct Cli {
     #[arg(long)]
     file: String,
@@ -23,7 +23,7 @@ struct Cli {
     hashes: String,
     
     #[arg(long)]
-    yara_scan: bool,
+    pattern_scan: bool,
     
     #[arg(long)]
     entropy: bool,
@@ -36,7 +36,7 @@ struct ScanResult {
     hashes: HashMap<String, String>,
     entropy_score: f64,
     entropy_level: String,
-    yara_matches: Vec<String>,
+    pattern_matches: Vec<String>,
     suspicious_sections: Vec<SectionAnalysis>,
     scan_duration_ms: u64,
     scan_mode: String,
@@ -128,35 +128,35 @@ fn analyze_sections(data: &[u8], section_size: usize) -> Vec<SectionAnalysis> {
                 entropy,
                 suspicious: entropy > 0.85,
                 section_type: if entropy > 0.90 {
-                    "Highly Entropic - Possibly Encrypted/Compressed".to_string()
+                    "高度熵值 - 可能加密或压缩".to_string()
                 } else if entropy > 0.85 {
-                    "Moderately Entropic - Requires Investigation".to_string()
+                    "中高熵值 - 需要调查".to_string()
                 } else {
-                    "Normal Data".to_string()
+                    "正常数据".to_string()
                 },
             }
         })
         .collect()
 }
 
-fn scan_yara_patterns(data: &[u8]) -> Vec<String> {
+fn scan_binary_patterns(data: &[u8]) -> Vec<String> {
     let mut matches = Vec::new();
     
     let patterns = vec![
-        ("MZ_PE_Header", &b"MZ"[..], "Windows PE Executable signature detected"),
-        ("PE_Signature", &b"PE\0\0"[..], "PE Optional Header found"),
-        ("PDF_JavaScript", &b"/JavaScript"[..], "PDF JavaScript object detected"),
-        ("PDF_OpenAction", &b"/OpenAction"[..], "PDF automatic action detected"),
-        ("PDF_Launch", &b"/Launch"[..], "PDF launch action - potential exploit"),
-        ("OLE_Macro_AutoOpen", &b"AutoOpen"[..], "OLE AutoOpen macro - high risk"),
-        ("OLE_Macro_DocumentOpen", &b"Document_Open"[..], "Document Open macro trigger"),
-        ("PowerShell_Encoded", &b"-enc "[..], "Encoded PowerShell command"),
-        ("PowerShell_ExecutionPolicy", &b"ExecutionPolicy Bypass"[..], "PowerShell policy bypass attempt"),
-        ("Base64_Encoded_PE", &b"TVqQAAMAAAA"[..], "Base64 encoded PE executable"),
-        ("Shellcode_NOP_Sled", &b"\x90\x90\x90\x90\x90"[..], "NOP sled - possible shellcode"),
-        ("Reverse_Shell_Bash", &b"/dev/tcp/"[..], "Bash reverse shell attempt"),
-        ("SQL_Injection_Basic", &b"UNION SELECT"[..], "SQL injection pattern"),
-        ("XSS_Basic", &b"<script>"[..], "Cross-site scripting pattern"),
+        ("MZ_PE文件头", &b"MZ"[..], "Windows PE可执行文件签名"),
+        ("PE签名", &b"PE\0\0"[..], "PE可选头"),
+        ("PDF_JavaScript", &b"/JavaScript"[..], "PDF JavaScript对象"),
+        ("PDF_OpenAction", &b"/OpenAction"[..], "PDF自动动作"),
+        ("PDF_Launch", &b"/Launch"[..], "PDF启动动作"),
+        ("OLE_AutoOpen宏", &b"AutoOpen"[..], "OLE自动打开宏"),
+        ("OLE_DocumentOpen宏", &b"Document_Open"[..], "文档打开宏触发器"),
+        ("PowerShell_Encoded", &b"-enc "[..], "编码的PowerShell命令"),
+        ("PowerShell_Bypass", &b"ExecutionPolicy Bypass"[..], "PowerShell策略绕过"),
+        ("Base64_PE编码", &b"TVqQAAMAAAA"[..], "Base64编码的PE可执行文件"),
+        ("Shellcode_NOP滑板", &b"\x90\x90\x90\x90\x90"[..], "NOP滑板 - 可能的shellcode"),
+        ("Bash反向Shell", &b"/dev/tcp/"[..], "Bash反向shell尝试"),
+        ("SQL注入", &b"UNION SELECT"[..], "SQL注入模式"),
+        ("XSS攻击", &b"<script>"[..], "跨站脚本模式"),
     ];
     
     for (pattern_name, pattern_bytes, description) in patterns {
@@ -167,7 +167,7 @@ fn scan_yara_patterns(data: &[u8]) -> Vec<String> {
         
         if matches_count > 0 {
             matches.push(format!(
-                "{}: {} (found {} occurrences)",
+                "{}: {} (发现{}处)",
                 pattern_name, description, matches_count
             ));
         }
@@ -195,7 +195,7 @@ fn calculate_hashes(data: &[u8], hash_types: &[&str]) -> HashMap<String, String>
                     hasher.update(data);
                     ("MD5".to_string(), format!("{:x}", hasher.finalize()))
                 },
-                _ => ("Unknown".to_string(), "Unsupported hash type".to_string()),
+                _ => ("Unknown".to_string(), "Unsupported".to_string()),
             }
         })
         .collect()
@@ -219,13 +219,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     let entropy_level = if entropy_score > 0.90 {
-        "CRITICAL".to_string()
+        "严重".to_string()
     } else if entropy_score > 0.85 {
-        "HIGH".to_string()
+        "高危".to_string()
     } else if entropy_score > 0.70 {
-        "MEDIUM".to_string()
+        "中危".to_string()
     } else {
-        "LOW".to_string()
+        "低危".to_string()
     };
     
     let suspicious_sections = if entropy_score > 0.70 {
@@ -234,8 +234,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Vec::new()
     };
     
-    let yara_matches = if cli.yara_scan {
-        scan_yara_patterns(data)
+    let pattern_matches = if cli.pattern_scan {
+        scan_binary_patterns(data)
     } else {
         Vec::new()
     };
@@ -246,7 +246,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         hashes,
         entropy_score: (entropy_score * 10000.0).round() / 10000.0,
         entropy_level,
-        yara_matches,
+        pattern_matches,
         suspicious_sections,
         scan_duration_ms: start_time.elapsed().as_millis() as u64,
         scan_mode: cli.mode.clone(),
