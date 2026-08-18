@@ -6,7 +6,10 @@ class 熵数学分析器:
     def 完整分析(file_path: str) -> Dict:
         with open(file_path, 'rb') as f:
             data = f.read()
-        
+        return 熵数学分析器.完整分析_from_bytes(data, file_path.split("\\")[-1] if "\\" in file_path else file_path.split("/")[-1])
+    
+    @staticmethod
+    def 完整分析_from_bytes(data: bytes, filename: str = "unknown") -> Dict:
         length = len(data)
         freq = [0] * 256
         for b in data:
@@ -75,7 +78,7 @@ class 熵数学分析器:
         威胁 = "恶意" if 是恶意 or 是Shellcode else "安全"
         
         return {
-            "文件名": file_path.split("\\")[-1] if "\\" in file_path else file_path.split("/")[-1],
+            "文件名": filename,
             "文件大小": length,
             "SHA256": hashlib.sha256(data).hexdigest()[:32],
             "熵分析": {
