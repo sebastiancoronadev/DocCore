@@ -2,11 +2,11 @@
 import json
 import zlib
 import re
+import math
 from collections import defaultdict
 from typing import Dict, List, Any
 from datetime import datetime
 import io
-import struct
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -26,7 +26,6 @@ def decode_pdf_string(data: bytes) -> str:
             return data[3:].decode('utf-8', errors='replace')
         except:
             pass
-    
     try:
         return data.decode('utf-8', errors='replace')
     except:
@@ -78,7 +77,7 @@ class PDFDeepAnalyzer:
             self.findings["structural_anomalies"].append({
                 "type": "Invalid PDF Header",
                 "severity": "HIGH",
-                "description": "File missing standard PDF header - possible forged document"
+                "description": "File missing standard PDF header"
             })
     
     def _extract_javascript(self):
@@ -145,18 +144,15 @@ class PDFDeepAnalyzer:
     def _calculate_entropy(self, data: bytes) -> float:
         if not data:
             return 0.0
-        
         frequencies = defaultdict(int)
         for byte in data:
             frequencies[byte] += 1
-        
         entropy = 0.0
         data_len = len(data)
         for freq in frequencies.values():
             probability = freq / data_len
             if probability > 0:
-                entropy -= probability * (probability.bit_length() - 1)
-        
+                entropy -= probability * math.log2(probability)
         return entropy / 8.0
     
     def _detect_obfuscation(self):
@@ -208,16 +204,12 @@ class PDFDeepAnalyzer:
         if b'/Encrypt' in self.data:
             self.findings["encryption_info"] = {
                 "encrypted": True,
-                "warning": "PDF is encrypted - some analysis may be limited"
+                "warning": "PDF is encrypted - analysis may be limited"
             }
-            
-            if b'/StmF' in self.data or b'/StrF' in self.data:
-                self.findings["encryption_info"]["streams_encrypted"] = True
-            
             if b'/V 1' in self.data or b'/V 2' in self.data or b'/V 3' in self.data:
                 self.findings["encryption_info"]["weak_encryption"] = True
                 self.findings["structural_anomalies"].append({
-                    "type": "Weak PDF encryption version detected (V <= 3)",
+                    "type": "Weak PDF encryption version detected",
                     "risk": "HIGH"
                 })
     
@@ -226,25 +218,17 @@ class PDFDeepAnalyzer:
         matches = re.findall(chinese_pattern, self.data)
         if len(matches) > 10:
             self.findings["chinese_encoding_detected"] = True
-            self.findings["structural_anomalies"].append({
-                "type": "Chinese character encoding detected",
-                "detail": f"Found {len(matches)} UTF-8 multi-byte sequences - common in Chinese-origin documents"
-            })
     
     def _calculate_risk_score(self):
         total_risk = 0
-        
         if self.findings["javascript_injections"]:
             total_risk += 25 * len(self.findings["javascript_injections"])
-        
         if self.findings["compressed_streams"]:
             high_entropy_streams = [s for s in self.findings["compressed_streams"] if s["suspicious"]]
             total_risk += 15 * len(high_entropy_streams)
-        
         if self.findings["structural_anomalies"]:
             high_risk_anomalies = [a for a in self.findings["structural_anomalies"] if a.get("risk") == "HIGH"]
             total_risk += 20 * len(high_risk_anomalies)
-        
         if self.findings["encryption_info"].get("weak_encryption"):
             total_risk += 25
         
@@ -261,23 +245,15 @@ class PDFDeepAnalyzer:
 
 if __name__ == "__main__":
     import argparse
-    
-    parser = argparse.ArgumentParser(description='PDF Deep Analysis Engine - HeWen DocCore')
+    parser = argparse.ArgumentParser(description='PDF Deep Analysis Engine')
     parser.add_argument('--file', required=True, help='PDF file path')
-    parser.add_argument('--deep-analysis', action='store_true', help='Deep analysis mode')
-    parser.add_argument('--extract-javascript', action='store_true', help='Extract JavaScript')
-    parser.add_argument('--detect-streams', action='store_true', help='Detect compressed streams')
-    
+    parser.add_argument('--deep-analysis', action='store_true')
+    parser.add_argument('--extract-javascript', action='store_true')
+    parser.add_argument('--detect-streams', action='store_true')
     args = parser.parse_args()
-    
     try:
         analyzer = PDFDeepAnalyzer(args.file)
         results = analyzer.analyze()
         print(json.dumps(results, indent=2, ensure_ascii=False))
     except Exception as e:
-        error_result = {
-            "error": str(e),
-            "status": "ANALYSIS_FAILED",
-            "file": args.file
-        }
-        print(json.dumps(error_result, indent=2, ensure_ascii=False))
+        print(json.dumps({"error": str(e), "status": "ANALYSIS_FAILED"}, indent=2, ensure_ascii=False))
