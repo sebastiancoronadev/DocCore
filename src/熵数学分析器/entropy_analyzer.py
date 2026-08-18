@@ -13,15 +13,15 @@ class 熵数学分析器:
             freq[b] += 1
         
         ent = 0.0
-        inv = 1.0 / length
+        inv = 1.0 / length if length > 0 else 0
         for f in freq:
             if f:
                 p = f * inv
                 ent -= p * math.log2(p)
         香农 = ent / 8.0
         
-        expected = length / 256
-        chi2 = sum(((f - expected) ** 2) / expected for f in freq)
+        expected = length / 256 if length > 0 else 0
+        chi2 = sum(((f - expected) ** 2) / expected for f in freq if expected > 0)
         
         if length > 1:
             mean = sum(data) / length
@@ -65,8 +65,7 @@ class 熵数学分析器:
         if 香农 > 0.80: shellcode_score += 30
         if 香农 > 0.90: shellcode_score += 25
         if nop_ratio > 0.3: shellcode_score += 25
-        if shellcode_score >= 55: 是Shellcode = True
-        else: 是Shellcode = False
+        是Shellcode = shellcode_score >= 55
         
         if 香农 > 0.85 and has_opcodes: 是恶意 = True
         elif 香农 > 0.80 and has_api: 是恶意 = True
